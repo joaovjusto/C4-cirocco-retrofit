@@ -78,43 +78,80 @@ void loop()  // Start reading data loop from the CAN bus
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK)  // If there are no errors, continue
   {
 
-    if (canMsg.can_id == 0xF6) {  // If for turning indicator ignition
-      Lastingnition = ignition;
-      ignition = bitRead(canMsg.data[0], 3);
-      if (ignition && !Lastingnition) { ignitiontimer = millis(); }  //ignition switched to ON
-      if (!ignition) {
-        SSdesactivationDone = false;  //request a new SS desactivation  if ignition is off
-        EngineBeenStarted = false;    // reset EngineBeenStarted (if ignition off engine can't be running) If not reseted, on "warm" start (arduino not powered off between 2 engine start) SS will deactivate when as soon as ignition is on
+    // if (canMsg.can_id == 0xF6) {  // If for turning indicator ignition
+    //   Lastingnition = ignition;
+    //   ignition = bitRead(canMsg.data[0], 3);
+    //   if (ignition && !Lastingnition) { ignitiontimer = millis(); }  //ignition switched to ON
+    //   if (!ignition) {
+    //     SSdesactivationDone = false;  //request a new SS desactivation  if ignition is off
+    //     EngineBeenStarted = false;    // reset EngineBeenStarted (if ignition off engine can't be running) If not reseted, on "warm" start (arduino not powered off between 2 engine start) SS will deactivate when as soon as ignition is on
+    //   }
+    // }
+
+    // if (canMsg.can_id == 0x00E) {  //door state
+    //   DriverDoor = bitRead(canMsg.data[1], 6);
+    //   Serial.print("DriverDoor is  :  ");
+    //   Serial.println(DriverDoor);
+    // }
+    // if (canMsg.can_id == 0x236) {           //ANIMATION
+    //   if (!Animation_done && DriverDoor) {  //5s timeout
+    //     new_canMsg = canMsg;                //copy frame
+    //     new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
+    //     mcp2515.sendMessage(&new_canMsg);
+    //     Animation_done = true;
+    //   }
+    // }
+
+    if (canMsg.can_id == 0x1A9) {                //NAC message
+      if (SAM_NAC && !lastSAM_NAC) {  //is pushed and wasnot pushed before
+        SAMsend = true;
+        Serial.println("SAMsend asked ");
+      }
+
+      if (Theme1A9Send >= 1) {
+        Theme1A9Send = Theme1A9Send - 1;
+        can217msg2 = canMsg;  //copy frame
+        can217msg2.data[6] = bitWrite(can217msg2.data[6], 5, 1);
+        mcp2515.sendMessage(&can217msg2);
+        Serial.print("Theme1A9sent (70), new number is:  "); Serial.println(Theme1A9Send, DEC);
       }
     }
 
-    if (canMsg.can_id == 0x00E) {  //door state
-      DriverDoor = bitRead(canMsg.data[1], 6);
-      Serial.print("DriverDoor is  :  ");
-      Serial.println(DriverDoor);
+    if (canMsg.can_id == 0x217 && SAMsend) {  //217 received and something need to be send
+      //Serial.println("217 received");
+      can217msg = canMsg;  //copy frame
+      can217msg.data[3] = bitWrite(can217msg.data[3], 3, SAMsend);
+      SAMsend = false;
+      Serial.println("SAM struture written and SAMsend reset");
+      mcp2515.sendMessage(&can217msg);
+      //Serial.println("217 sent");
     }
-    if (canMsg.can_id == 0x236) {           //ANIMATION
-      if (!Animation_done && DriverDoor) {  //5s timeout
-        new_canMsg = canMsg;                //copy frame
-        new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
-        mcp2515.sendMessage(&new_canMsg);
-        Animation_done = true;
+
+    if (canMsg.can_id == 0x2E9) {  //Requested ambiance change
+      // Serial.print("RCVdata1 is ");
+      // Serial.println(canMsgRcv.data[1], HEX);
+      // Serial.print("ambiance is  :  ");
+      // Serial.println(ambiance, HEX);
+      // Serial.print("RCVdata0 is ");
+      // Serial.println(canMsgRcv.data[0], HEX);
+      // Serial.print("theme is  :  ");
+      // Serial.println(theme, HEX);
+
+      can217msg = canMsg;  //copy frame                                                                       //copy frame
+      can217msg.data[0] = ((can217msg.data[0] & 0xFC) | (theme & 0x03));                           //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
+      can217msg.data[1] = ((can217msg.data[1] & 0x3F) | (ambiance & 0xC0));                        //ambiance value is only in bit 6&7=0xC0 mask
+      if ((canMsg.data[0] != can217msg.data[0]) || (canMsg.data[1] != can217msg.data[1])) {  //diffrent value received from NAC, we need to request the new value
+        mcp2515.sendMessage(&can217msg);
+        Serial.print("2E9 sent with theme:  "); Serial.println(theme, HEX);
+        Serial.print("2E9 sent with ambiance:  "); Serial.println(can217msg.data[1], HEX);
       }
-    }
-    if (Theme1A9Send >= 1) {
-      Theme1A9Send = Theme1A9Send - 1;
-      new_canMsg = canMsg;  //copy frame
-      new_canMsg.data[6] = bitWrite(new_canMsg.data[6], 5, 1);
-      mcp2515.sendMessage(&new_canMsg);
-      Serial.print("Theme1A9sent (70), new number is:  ");
-      Serial.println(Theme1A9Send, DEC);
     }
 
     if (canMsg.can_id == 0xA2) {  //VCI state lower right (ESC)
       can128msg = canMsg;
       LastEscState = EscState;
       EscState = bitRead(canMsg.data[1], 4);  //ESC key
-      Serial.println(EscState);
+      // Serial.println(EscState);
       if (EscState && !LastEscState) {  //is pushed and wasnot pushed before
         Serial.println("ESC pressed");
         ESCtimer = millis();
@@ -130,13 +167,16 @@ void loop()  // Start reading data loop from the CAN bus
             default: ambiance = 0x01; break;  //return to off for any other value
           }
 
-          can128msg = canMsg;                                                 //copy frame
-          can128msg.data[0] = ((can128msg.data[0] & 0xFC) | (theme & 0x03));  //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
+          Serial.println(theme);
+          
+          can217msg2 = canMsg;    
+                                             //copy frame
+          can217msg2.data[0] = ((can217msg2.data[0] & 0xFC) | (theme & 0x03));  //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
                                                                               // if ((can128msg.data[0] != can128msg.data[0]) || (can128msg.data[1] != can128msg.data[1])) {  //diffrent value received from NAC, we need to request the new value
-          mcp2515.sendMessage(&can128msg);
+          mcp2515.sendMessage(&can217msg2);
 
-          Serial.print("Theme is  :  ");
-          Serial.println(theme, HEX);
+          // Serial.print("Theme is  :  ");
+          // Serial.println(theme, HEX);
 
         } else {
           Serial.println("ESC short press");
@@ -163,8 +203,8 @@ void loop()  // Start reading data loop from the CAN bus
             sportModeInit = true;
           }
 
-          Serial.print("ambiance is  :  ");
-          Serial.println(ambiance, HEX);
+          // Serial.print("ambiance is  :  ");
+          // Serial.println(ambiance, HEX);
         }
       }
     }
@@ -249,19 +289,9 @@ void loop()  // Start reading data loop from the CAN bus
       can217msg2 = canMsg;
     }
 
-    // if (canMsg.can_id == 0x217 && SAMsend) {  //217 received and something need to be send
-    //   //Serial.println("217 received");
-    //   new_canMsg = canMsg;  //copy frame
-    //   new_canMsg.data[3] = bitWrite(new_canMsg.data[3], 3, SAMsend);
-    //   SAMsend = false;
-    //   Serial.println("SAM struture written and SAMsend reset");
-    //   mcp2515.sendMessage(&new_canMsg);
-    //   //Serial.println("217 sent");
-    // }
-
-    // if (canMsg.can_id == 0x227) {
-    //   can227msg = canMsg;
-    // }
+    if (canMsg.can_id == 0x227) {
+      can227msg = canMsg;
+    }
 
     // if (canMsg.can_id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
     //   SAMstatus = bitRead(canMsg.data[0], 2);
