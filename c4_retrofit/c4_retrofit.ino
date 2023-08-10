@@ -221,34 +221,34 @@ void loop() {
       Serial.println("217 sent");
     }
 
-    if (id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
-      SAMstatus = bitRead(canMsgRcv.data[0], 2);
-      if (!SAMstatus && ignition) {
-        Serial.println("SAMON");
-      } else {
-        Serial.println("SAMOFF");
-      }
+    // if (id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
+    //   SAMstatus = bitRead(canMsgRcv.data[0], 2);
+    //   if (!SAMstatus && ignition) {
+    //     Serial.println("SAMON");
+    //   } else {
+    //     Serial.println("SAMOFF");
+    //   }
 
-      if (SAMstatus == 0) {  //SAM active
-        canMsgSnd.can_id = 0x321;
-        canMsgSnd.can_dlc = 5;
-        canMsgSnd.data[0] = 0x0;
-        canMsgSnd.data[1] = 0x0;
-        canMsgSnd.data[2] = 0x0;
-        canMsgSnd.data[3] = 0x0;
-        canMsgSnd.data[4] = 0x0;
-        CAN0.sendMessage(&canMsgSnd);  //send 0x321 frame to turn on indicator
-      }
-    }
+    //   if (SAMstatus == 0) {  //SAM active
+    //     canMsgSnd.can_id = 0x321;
+    //     canMsgSnd.can_dlc = 5;
+    //     canMsgSnd.data[0] = 0x0;
+    //     canMsgSnd.data[1] = 0x0;
+    //     canMsgSnd.data[2] = 0x0;
+    //     canMsgSnd.data[3] = 0x0;
+    //     canMsgSnd.data[4] = 0x0;
+    //     CAN0.sendMessage(&canMsgSnd);  //send 0x321 frame to turn on indicator
+    //   }
+    // }
 
-    if (id == 0x236) {                      //ANIMATION
-      if (!Animation_done && DriverDoor) {  //5s timeout
-        canMsgSnd = canMsgRcv;              //copy frame
-        canMsgSnd.data[5] = bitWrite(canMsgSnd.data[5], 6, 1);
-        CAN0.sendMessage(&canMsgSnd);
-        Animation_done = true;
-      }
-    }
+    // if (id == 0x236) {                      //ANIMATION
+    //   if (!Animation_done && DriverDoor) {  //5s timeout
+    //     canMsgSnd = canMsgRcv;              //copy frame
+    //     canMsgSnd.data[5] = bitWrite(canMsgSnd.data[5], 6, 1);
+    //     CAN0.sendMessage(&canMsgSnd);
+    //     Animation_done = true;
+    //   }
+    // }
 
     if (id == 0x2E9) {  //Requested ambiance change
       Serial.print("RCVdata1 is ");
@@ -276,10 +276,10 @@ void loop() {
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
 
-    if (id == 0x00E) {  //door state
-      DriverDoor = bitRead(canMsgRcv.data[1], 6);
-      //Serial.print("DriverDoor is  :  ");Serial.println(DriverDoor);
-    }
+    // if (id == 0x00E) {  //door state
+    //   DriverDoor = bitRead(canMsgRcv.data[1], 6);
+    //   //Serial.print("DriverDoor is  :  ");Serial.println(DriverDoor);
+    // }
 
     if (id == 0xA2) {  //VCI state lower right (ESC)
       LastEscState = EscState;
