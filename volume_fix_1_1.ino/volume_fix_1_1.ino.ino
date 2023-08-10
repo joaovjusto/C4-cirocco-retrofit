@@ -78,29 +78,29 @@ void loop()  // Start reading data loop from the CAN bus
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK)  // If there are no errors, continue
   {
 
-    // if (canMsg.can_id == 0xF6) {  // If for turning indicator ignition
-    //   Lastingnition = ignition;
-    //   ignition = bitRead(canMsg.data[0], 3);
-    //   if (ignition && !Lastingnition) { ignitiontimer = millis(); }  //ignition switched to ON
-    //   if (!ignition) {
-    //     SSdesactivationDone = false;  //request a new SS desactivation  if ignition is off
-    //     EngineBeenStarted = false;    // reset EngineBeenStarted (if ignition off engine can't be running) If not reseted, on "warm" start (arduino not powered off between 2 engine start) SS will deactivate when as soon as ignition is on
-    //   }
-    // }
+    if (canMsg.can_id == 0xF6) {  // If for turning indicator ignition
+      Lastingnition = ignition;
+      ignition = bitRead(canMsg.data[0], 3);
+      if (ignition && !Lastingnition) { ignitiontimer = millis(); }  //ignition switched to ON
+      if (!ignition) {
+        SSdesactivationDone = false;  //request a new SS desactivation  if ignition is off
+        EngineBeenStarted = false;    // reset EngineBeenStarted (if ignition off engine can't be running) If not reseted, on "warm" start (arduino not powered off between 2 engine start) SS will deactivate when as soon as ignition is on
+      }
+    }
 
-    // if (canMsg.can_id == 0x00E) {  //door state
-    //   DriverDoor = bitRead(canMsg.data[1], 6);
-    //   Serial.print("DriverDoor is  :  ");
-    //   Serial.println(DriverDoor);
-    // }
-    // if (canMsg.can_id == 0x236) {           //ANIMATION
-    //   if (!Animation_done && DriverDoor) {  //5s timeout
-    //     new_canMsg = canMsg;                //copy frame
-    //     new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
-    //     mcp2515.sendMessage(&new_canMsg);
-    //     Animation_done = true;
-    //   }
-    // }
+    if (canMsg.can_id == 0x00E) {  //door state
+      DriverDoor = bitRead(canMsg.data[1], 6);
+      Serial.print("DriverDoor is  :  ");
+      Serial.println(DriverDoor);
+    }
+    if (canMsg.can_id == 0x236) {           //ANIMATION
+      if (!Animation_done && DriverDoor) {  //5s timeout
+        new_canMsg = canMsg;                //copy frame
+        new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
+        mcp2515.sendMessage(&new_canMsg);
+        Animation_done = true;
+      }
+    }
 
     if (canMsg.can_id == 0x1A9) {                //NAC message
       if (SAM_NAC && !lastSAM_NAC) {  //is pushed and wasnot pushed before
@@ -209,6 +209,17 @@ void loop()  // Start reading data loop from the CAN bus
       }
     }
 
+    if (ignition == 0)
+    {
+      sportMode = false;
+      sportModeInit = false;
+      sportModeDeInit = false;
+      ecoMode = false;
+      ecoModeInit = false;
+      ecoModeDeInit = false;
+    }
+    
+
     if (sportMode) {
       bitSet(can128msg.data[1], 6);  // Set red theme
 
@@ -293,27 +304,27 @@ void loop()  // Start reading data loop from the CAN bus
       can227msg = canMsg;
     }
 
-    // if (canMsg.can_id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
-    //   SAMstatus = bitRead(canMsg.data[0], 2);
-    //   if (!SAMstatus && ignition) {
-    //     Serial.println("SAM ON");
-    //     //        digitalWrite(SAMLED_PIN, HIGH);  //turn on led
-    //   } else {
-    //     Serial.println("SAM OFF");
-    //     //        digitalWrite(SAMLED_PIN, LOW);  //turn off led
-    //   }
+    if (canMsg.can_id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
+      SAMstatus = bitRead(canMsg.data[0], 2);
+      if (!SAMstatus && ignition) {
+        Serial.println("SAM ON");
+        //        digitalWrite(SAMLED_PIN, HIGH);  //turn on led
+      } else {
+        Serial.println("SAM OFF");
+        //        digitalWrite(SAMLED_PIN, LOW);  //turn off led
+      }
 
-    //   if (SAMstatus == 0) {  //SAM active
-    //     new_canMsg.can_id = 0x321;
-    //     new_canMsg.can_dlc = 5;
-    //     new_canMsg.data[0] = 0x0;
-    //     new_canMsg.data[1] = 0x0;
-    //     new_canMsg.data[2] = 0x0;
-    //     new_canMsg.data[3] = 0x0;
-    //     new_canMsg.data[4] = 0x0;
-    //     mcp2515.sendMessage(&new_canMsg);  //send 0x321 frame to turn on indicator
-    //   }
-    // }
+      if (SAMstatus == 0) {  //SAM active
+        new_canMsg.can_id = 0x321;
+        new_canMsg.can_dlc = 5;
+        new_canMsg.data[0] = 0x0;
+        new_canMsg.data[1] = 0x0;
+        new_canMsg.data[2] = 0x0;
+        new_canMsg.data[3] = 0x0;
+        new_canMsg.data[4] = 0x0;
+        mcp2515.sendMessage(&new_canMsg);  //send 0x321 frame to turn on indicator
+      }
+    }
     if (canMsg.can_id == 0x122)  // If the packet is from the FMUX panel
     {
       if (canMsg.data[5] == 0)  // This condition is true when the car wakes up and no volume adjustment is used on the FMUX panel or steering wheel (via Arduino)
