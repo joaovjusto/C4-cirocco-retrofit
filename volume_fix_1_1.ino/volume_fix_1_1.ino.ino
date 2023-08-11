@@ -21,9 +21,11 @@ struct can_frame can217msg;
 struct can_frame can217msg2;
 
 struct can_frame can2E9Send;
-struct can_frame can2E9Rcv;
+struct can_frame can236Send;
 
 struct can_frame can227msg;
+
+struct can_frame canThemeSend;
 
 bool sportModeInit = false;
 bool sportModeDeInit = false;
@@ -96,11 +98,13 @@ void loop()  // Start reading data loop from the CAN bus
       Serial.print("DriverDoor is  :  ");
       Serial.println(DriverDoor);
     }
-    if (canMsg.can_id == 0x236) {           //ANIMATION
+    
+    if (canMsg.can_id == 0x236) {  
       if (!Animation_done && DriverDoor) {  //5s timeout
-        new_canMsg = canMsg;                //copy frame
-        new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
-        mcp2515.sendMessage(&new_canMsg);
+        can236Send = canMsg;         //ANIMATION
+        // new_canMsg = canMsg;                //copy frame
+        can236Send.data[5] = bitWrite(can236Send.data[5], 6, 1);
+        mcp2515.sendMessage(&can236Send);
         Animation_done = true;
       }
     }
@@ -113,9 +117,9 @@ void loop()  // Start reading data loop from the CAN bus
 
       if (Theme1A9Send >= 1) {
         Theme1A9Send = Theme1A9Send - 1;
-        can217msg2 = canMsg;  //copy frame
-        can217msg2.data[6] = bitWrite(can217msg2.data[6], 5, 1);
-        mcp2515.sendMessage(&can217msg2);
+        canThemeSend = canMsg;  //copy frame
+        canThemeSend.data[6] = bitWrite(canThemeSend.data[6], 5, 1);
+        mcp2515.sendMessage(&canThemeSend);
         Serial.print("Theme1A9sent (70), new number is:  "); Serial.println(Theme1A9Send, DEC);
       }
     }
@@ -140,13 +144,13 @@ void loop()  // Start reading data loop from the CAN bus
       // Serial.print("theme is  :  ");
       // Serial.println(theme, HEX);
 
-      can217msg = canMsg;  //copy frame                                                                       //copy frame
-      can217msg.data[0] = ((can217msg.data[0] & 0xFC) | (theme & 0x03));                           //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
-      can217msg.data[1] = ((can217msg.data[1] & 0x3F) | (ambiance & 0xC0));                        //ambiance value is only in bit 6&7=0xC0 mask
-      if ((canMsg.data[0] != can217msg.data[0]) || (canMsg.data[1] != can217msg.data[1])) {  //diffrent value received from NAC, we need to request the new value
-        mcp2515.sendMessage(&can217msg);
+      can2E9Send = canMsg;  //copy frame                                                                       //copy frame
+      can2E9Send.data[0] = ((can2E9Send.data[0] & 0xFC) | (theme & 0x03));                           //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
+      can2E9Send.data[1] = ((can2E9Send.data[1] & 0x3F) | (ambiance & 0xC0));                        //ambiance value is only in bit 6&7=0xC0 mask
+      if ((canMsg.data[0] != can2E9Send.data[0]) || (canMsg.data[1] != can2E9Send.data[1])) {  //diffrent value received from NAC, we need to request the new value
+        mcp2515.sendMessage(&can2E9Send);
         Serial.print("2E9 sent with theme:  "); Serial.println(theme, HEX);
-        Serial.print("2E9 sent with ambiance:  "); Serial.println(can217msg.data[1], HEX);
+        Serial.print("2E9 sent with ambiance:  "); Serial.println(can2E9Send.data[1], HEX);
       }
     }
 
@@ -172,11 +176,11 @@ void loop()  // Start reading data loop from the CAN bus
 
           // Serial.println(theme);
           
-          can217msg2 = canMsg;    
+          canThemeSend = canMsg;    
                                              //copy frame
-          can217msg2.data[0] = ((can217msg2.data[0] & 0xFC) | (theme & 0x03));  //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
+          canThemeSend.data[0] = ((canThemeSend.data[0] & 0xFC) | (theme & 0x03));  //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
                                                                               // if ((can128msg.data[0] != can128msg.data[0]) || (can128msg.data[1] != can128msg.data[1])) {  //diffrent value received from NAC, we need to request the new value
-          mcp2515.sendMessage(&can217msg2);
+          mcp2515.sendMessage(&canThemeSend);
 
           // Serial.print("Theme is  :  ");
           // Serial.println(theme, HEX);
@@ -233,6 +237,7 @@ void loop()  // Start reading data loop from the CAN bus
       mcp2515.sendMessage(&can2E9Send);  // Send the sport theme to Cirocco
 
       if (sportModeInit) {
+        can217msg2 = canMsg;
         sportModeInit = false;
         Serial.println("Sport mode ON");
         // if (bitRead(can227msg.data[0], 4) == 0) {
@@ -244,6 +249,7 @@ void loop()  // Start reading data loop from the CAN bus
       }
     } else {
       if (sportModeDeInit) {
+        can217msg2 = canMsg;
         sportModeDeInit = false;
         Serial.println("Sport mode OFF");
 
@@ -269,7 +275,7 @@ void loop()  // Start reading data loop from the CAN bus
         Serial.println("eco mode ON");
         // bitWrite(can217msg.data[3], 3, 1);
 
-        mcp2515.sendMessage(&can217msg);
+        // mcp2515.sendMessage(&can217msg);
       }
     } else {
       if (ecoModeDeInit) {
@@ -277,7 +283,7 @@ void loop()  // Start reading data loop from the CAN bus
         Serial.println("Eco mode OFF");
         // bitWrite(can217msg.data[3], 3, 1);
 
-        mcp2515.sendMessage(&can217msg);
+        // mcp2515.sendMessage(&can217msg);
       }
     }
     if (canMsg.can_id == 0x128) {  // VALIDATE CLUTCH MODE
@@ -299,11 +305,11 @@ void loop()  // Start reading data loop from the CAN bus
         }
       }
     }
-    if (canMsg.can_id == 0x217) {  // IF MSG TRANSMITION LIGHT
-                                   // Serial.println("LIGHT TRANSMISSION");
-      can217msg = canMsg;
-      can217msg2 = canMsg;
-    }
+    // if (canMsg.can_id == 0x217) {  // IF MSG TRANSMITION LIGHT
+    //                                // Serial.println("LIGHT TRANSMISSION");
+    //   can217msg = canMsg;
+    //   can217msg2 = canMsg;
+    // }
 
     if (canMsg.can_id == 0x227) {
       can227msg = canMsg;
