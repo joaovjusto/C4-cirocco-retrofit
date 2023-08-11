@@ -4,7 +4,7 @@
    ID:
    0x128 - Dados do cambio (SPORT/NEVE)
    0x217 - ID para ativar ESP / PARK / PONTO CEGO... (ver doc git)
-   0x2E9 -
+   0x2E9 - Ambiance
 
 */
 
@@ -19,6 +19,9 @@ struct can_frame can128msg;  // Create a structure for sending CAN packet
 
 struct can_frame can217msg;
 struct can_frame can217msg2;
+
+struct can_frame can2E9Send;
+struct can_frame can2E9Rcv;
 
 struct can_frame can227msg;
 
@@ -160,14 +163,14 @@ void loop()  // Start reading data loop from the CAN bus
         Serial.println("ESC released");
         if ((millis() - ESCtimer) >= 1000) {
           Serial.println("ESC long press");
-          Theme1A9Send = 2;  //number of time to send 70 value (2time on nac)
+          Theme1A9Send = 4;  //number of time to send 70 value (2time on nac)
           switch (theme) {
             case 0x01: theme = 0x02; break;   //Switch blue to bzonze
             case 0x02: theme = 0x01; break;   //Switch bzonze to blue
             default: ambiance = 0x01; break;  //return to off for any other value
           }
 
-          Serial.println(theme);
+          // Serial.println(theme);
           
           can217msg2 = canMsg;    
                                              //copy frame
@@ -221,20 +224,21 @@ void loop()  // Start reading data loop from the CAN bus
     
 
     if (sportMode) {
-      bitSet(can128msg.data[1], 6);  // Set red theme
+      can2E9Send = canMsg;
+      bitSet(can2E9Send.data[1], 6);  // Set red theme
 
-      can128msg.can_id = 0x2E9;
-      can128msg.can_dlc = 4;
+      can2E9Send.can_id = 0x2E9;
+      can2E9Send.can_dlc = 4;
 
-      mcp2515.sendMessage(&can128msg);  // Send the sport theme to Cirocco
+      mcp2515.sendMessage(&can2E9Send);  // Send the sport theme to Cirocco
 
       if (sportModeInit) {
         sportModeInit = false;
         Serial.println("Sport mode ON");
-        if (bitRead(can227msg.data[0], 4) == 0) {
+        // if (bitRead(can227msg.data[0], 4) == 0) {
           bitWrite(can217msg2.data[2], 6, 1);
-        }
-        bitWrite(can217msg2.data[3], 3, 1);
+        // }
+        // bitWrite(can217msg2.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg2);
       }
@@ -243,26 +247,27 @@ void loop()  // Start reading data loop from the CAN bus
         sportModeDeInit = false;
         Serial.println("Sport mode OFF");
 
-        if (bitRead(can227msg.data[0], 4) == 1) {
+        // if (bitRead(can227msg.data[0], 4) == 1) {
           bitWrite(can217msg2.data[2], 6, 1);
-        }
-        bitWrite(can217msg2.data[3], 3, 1);
+        // }
+        // bitWrite(can217msg2.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg2);
       }
     }
     if (ecoMode) {
-      bitSet(can128msg.data[1], 7);  // Set relax theme
+      can2E9Send = canMsg;
+      bitSet(can2E9Send.data[1], 7);  // Set relax theme
 
-      can128msg.can_id = 0x2E9;
-      can128msg.can_dlc = 4;
+      can2E9Send.can_id = 0x2E9;
+      can2E9Send.can_dlc = 4;
 
-      mcp2515.sendMessage(&can128msg);  // Send the red theme to Cirocco
+      mcp2515.sendMessage(&can2E9Send);  // Send the red theme to Cirocco
 
       if (ecoModeInit) {
         ecoModeInit = false;
         Serial.println("eco mode ON");
-        bitWrite(can217msg.data[3], 3, 1);
+        // bitWrite(can217msg.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg);
       }
@@ -270,12 +275,12 @@ void loop()  // Start reading data loop from the CAN bus
       if (ecoModeDeInit) {
         ecoModeDeInit = false;
         Serial.println("Eco mode OFF");
-        bitWrite(can217msg.data[3], 3, 1);
+        // bitWrite(can217msg.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg);
       }
     }
-    if (canMsg.can_id == 0x128) {  // IF MSG THEME
+    if (canMsg.can_id == 0x128) {  // VALIDATE CLUTCH MODE
       can128msg = canMsg;
       if (ambiance == 0x0E) {
         if (canMsg.data[2] == 96) {
