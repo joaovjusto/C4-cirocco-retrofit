@@ -160,7 +160,7 @@ void loop()  // Start reading data loop from the CAN bus
         Serial.println("ESC released");
         if ((millis() - ESCtimer) >= 1000) {
           Serial.println("ESC long press");
-          Theme1A9Send = 2;  //number of time to send 70 value (2time on nac)
+          Theme1A9Send = 4;  //number of time to send 70 value (2time on nac)
           switch (theme) {
             case 0x01: theme = 0x02; break;   //Switch blue to bzonze
             case 0x02: theme = 0x01; break;   //Switch bzonze to blue
