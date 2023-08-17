@@ -88,25 +88,25 @@ void loop()  // Start reading data loop from the CAN bus
       }
     }
 
-    if (canMsg.can_id == 0x00E) {  //door state
-      DriverDoor = bitRead(canMsg.data[1], 6);
-      Serial.print("DriverDoor is  :  ");
-      Serial.println(DriverDoor);
-    }
-    if (canMsg.can_id == 0x236) {           //ANIMATION
-      if (!Animation_done && DriverDoor) {  //5s timeout
-        new_canMsg = canMsg;                //copy frame
-        new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
-        mcp2515.sendMessage(&new_canMsg);
-        Animation_done = true;
-      }
-    }
+    // if (canMsg.can_id == 0x00E) {  //door state
+    //   DriverDoor = bitRead(canMsg.data[1], 6);
+    //   Serial.print("DriverDoor is  :  ");
+    //   Serial.println(DriverDoor);
+    // }
+    // if (canMsg.can_id == 0x236) {           //ANIMATION
+    //   if (!Animation_done && DriverDoor) {  //5s timeout
+    //     new_canMsg = canMsg;                //copy frame
+    //     new_canMsg.data[5] = bitWrite(new_canMsg.data[5], 6, 1);
+    //     mcp2515.sendMessage(&new_canMsg);
+    //     Animation_done = true;
+    //   }
+    // }
 
     if (canMsg.can_id == 0x1A9) {                //NAC message
-      if (SAM_NAC && !lastSAM_NAC) {  //is pushed and wasnot pushed before
-        SAMsend = true;
-        Serial.println("SAMsend asked ");
-      }
+      // if (SAM_NAC && !lastSAM_NAC) {  //is pushed and wasnot pushed before
+      //   SAMsend = true;
+      //   Serial.println("SAMsend asked ");
+      // }
 
       if (Theme1A9Send >= 1) {
         Theme1A9Send = Theme1A9Send - 1;
@@ -117,15 +117,15 @@ void loop()  // Start reading data loop from the CAN bus
       }
     }
 
-    if (canMsg.can_id == 0x217 && SAMsend) {  //217 received and something need to be send
-      //Serial.println("217 received");
-      can217msg = canMsg;  //copy frame
-      can217msg.data[3] = bitWrite(can217msg.data[3], 3, SAMsend);
-      SAMsend = false;
-      Serial.println("SAM struture written and SAMsend reset");
-      mcp2515.sendMessage(&can217msg);
-      //Serial.println("217 sent");
-    }
+    // if (canMsg.can_id == 0x217 && SAMsend) {  //217 received and something need to be send
+    //   //Serial.println("217 received");
+    //   can217msg = canMsg;  //copy frame
+    //   can217msg.data[3] = bitWrite(can217msg.data[3], 3, SAMsend);
+    //   SAMsend = false;
+    //   Serial.println("SAM struture written and SAMsend reset");
+    //   mcp2515.sendMessage(&can217msg);
+    //   //Serial.println("217 sent");
+    // }
 
     if (canMsg.can_id == 0x2E9) {  //Requested ambiance change
       // Serial.print("RCVdata1 is ");
@@ -234,7 +234,7 @@ void loop()  // Start reading data loop from the CAN bus
         if (bitRead(can227msg.data[0], 4) == 0) {
           bitWrite(can217msg2.data[2], 6, 1);
         }
-        bitWrite(can217msg2.data[3], 3, 1);
+        // bitWrite(can217msg2.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg2);
       }
@@ -246,7 +246,7 @@ void loop()  // Start reading data loop from the CAN bus
         if (bitRead(can227msg.data[0], 4) == 1) {
           bitWrite(can217msg2.data[2], 6, 1);
         }
-        bitWrite(can217msg2.data[3], 3, 1);
+        // bitWrite(can217msg2.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg2);
       }
@@ -262,7 +262,7 @@ void loop()  // Start reading data loop from the CAN bus
       if (ecoModeInit) {
         ecoModeInit = false;
         Serial.println("eco mode ON");
-        bitWrite(can217msg.data[3], 3, 1);
+        // bitWrite(can217msg.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg);
       }
@@ -270,30 +270,30 @@ void loop()  // Start reading data loop from the CAN bus
       if (ecoModeDeInit) {
         ecoModeDeInit = false;
         Serial.println("Eco mode OFF");
-        bitWrite(can217msg.data[3], 3, 1);
+        // bitWrite(can217msg.data[3], 3, 1);
 
         mcp2515.sendMessage(&can217msg);
       }
     }
-    if (canMsg.can_id == 0x128) {  // IF MSG THEME
-      can128msg = canMsg;
-      if (ambiance == 0x0E) {
-        if (canMsg.data[2] == 96) {
-          ecoMode = true;
-          ecoModeDeInit = true;
-        } else {
-          ecoMode = false;
-          ecoModeInit = true;
-        }
-        if (canMsg.data[2] == 32) {
-          sportMode = true;
-          sportModeDeInit = true;
-        } else {
-          sportMode = false;
-          sportModeInit = true;
-        }
-      }
-    }
+    // if (canMsg.can_id == 0x128) {  // IF MSG THEME
+    //   can128msg = canMsg;
+    //   if (ambiance == 0x0E) {
+    //     if (canMsg.data[2] == 96) {
+    //       ecoMode = true;
+    //       ecoModeDeInit = true;
+    //     } else {
+    //       ecoMode = false;
+    //       ecoModeInit = true;
+    //     }
+    //     if (canMsg.data[2] == 32) {
+    //       sportMode = true;
+    //       sportModeDeInit = true;
+    //     } else {
+    //       sportMode = false;
+    //       sportModeInit = true;
+    //     }
+    //   }
+    // }
     if (canMsg.can_id == 0x217) {  // IF MSG TRANSMITION LIGHT
                                    // Serial.println("LIGHT TRANSMISSION");
       can217msg = canMsg;
@@ -304,27 +304,27 @@ void loop()  // Start reading data loop from the CAN bus
       can227msg = canMsg;
     }
 
-    if (canMsg.can_id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
-      SAMstatus = bitRead(canMsg.data[0], 2);
-      if (!SAMstatus && ignition) {
-        Serial.println("SAM ON");
-        //        digitalWrite(SAMLED_PIN, HIGH);  //turn on led
-      } else {
-        Serial.println("SAM OFF");
-        //        digitalWrite(SAMLED_PIN, LOW);  //turn off led
-      }
+    // if (canMsg.can_id == 0x2D1) {  //frame for SAM state (turn on cirocco line)
+    //   SAMstatus = bitRead(canMsg.data[0], 2);
+    //   if (!SAMstatus && ignition) {
+    //     Serial.println("SAM ON");
+    //     //        digitalWrite(SAMLED_PIN, HIGH);  //turn on led
+    //   } else {
+    //     Serial.println("SAM OFF");
+    //     //        digitalWrite(SAMLED_PIN, LOW);  //turn off led
+    //   }
 
-      if (SAMstatus == 0) {  //SAM active
-        new_canMsg.can_id = 0x321;
-        new_canMsg.can_dlc = 5;
-        new_canMsg.data[0] = 0x0;
-        new_canMsg.data[1] = 0x0;
-        new_canMsg.data[2] = 0x0;
-        new_canMsg.data[3] = 0x0;
-        new_canMsg.data[4] = 0x0;
-        mcp2515.sendMessage(&new_canMsg);  //send 0x321 frame to turn on indicator
-      }
-    }
+    //   if (SAMstatus == 0) {  //SAM active
+    //     new_canMsg.can_id = 0x321;
+    //     new_canMsg.can_dlc = 5;
+    //     new_canMsg.data[0] = 0x0;
+    //     new_canMsg.data[1] = 0x0;
+    //     new_canMsg.data[2] = 0x0;
+    //     new_canMsg.data[3] = 0x0;
+    //     new_canMsg.data[4] = 0x0;
+    //     mcp2515.sendMessage(&new_canMsg);  //send 0x321 frame to turn on indicator
+    //   }
+    // }
     if (canMsg.can_id == 0x122)  // If the packet is from the FMUX panel
     {
       if (canMsg.data[5] == 0)  // This condition is true when the car wakes up and no volume adjustment is used on the FMUX panel or steering wheel (via Arduino)
@@ -366,7 +366,7 @@ void loop()  // Start reading data loop from the CAN bus
 
         mcp2515.sendMessage(&new_canMsg);  // Send the new volume level command
 
-        delay(120);  // Delay 0.15 seconds
+        // delay(120);  // Delay 0.15 seconds
       }
 
       if (canMsg.data[0] == steer_key_2)  // Determine which button is pressed
@@ -390,7 +390,7 @@ void loop()  // Start reading data loop from the CAN bus
 
         mcp2515.sendMessage(&new_canMsg);  // Send the new volume level command
 
-        delay(120);  // Delay 0.12 seconds
+        // delay(120);  // Delay 0.12 seconds
       }
     }
   }
