@@ -168,7 +168,7 @@ void loop() {
 
         CAN0.sendMessage(&canMsgSnd);  // Send the new volume level command
 
-        delay(120);  // Delay 0.15 seconds
+        // delay(120);  // Delay 0.15 seconds
       }
 
       if (canMsgRcv.data[0] == steer_key_2)  // Determine which button is pressed
@@ -192,7 +192,7 @@ void loop() {
 
         CAN0.sendMessage(&canMsgSnd);  // Send the new volume level command
 
-        delay(120);  // Delay 0.12 seconds
+        // delay(120);  // Delay 0.12 seconds
       }
     }
 
