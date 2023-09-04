@@ -257,7 +257,7 @@ void loop() // Start reading data loop from the CAN bus
             break; // return to off for any other value
           }
 
-          EEPROM.write(0, ambiance);
+          EEPROM.update(0, ambiance);
 
           Serial.print("ambiance is  :  ");
           Serial.println(ambiance, HEX);
