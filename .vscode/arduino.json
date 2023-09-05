@@ -1,6 +1,6 @@
 {
     "configuration": "cpu=atmega2560",
     "board": "arduino:avr:mega",
-    "port": "COM5",
+    "port": "COM3",
     "sketch": "volume_fix_1_1.ino\\volume_fix_1_1.ino.ino"
 }
