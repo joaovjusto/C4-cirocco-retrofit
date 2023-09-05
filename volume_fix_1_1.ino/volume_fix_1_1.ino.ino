@@ -220,8 +220,6 @@ void sendNewThemeRequest() {
   Theme1A9Send = Theme1A9Send - 1;
   canTheme.data[6] = bitWrite(canTheme.data[6], 5, 1);
   mcp2515.sendMessage(&canTheme);
-  Serial.print("Theme1A9sent (70), new number is:  ");
-  Serial.println(Theme1A9Send, DEC);
 }
 
 void sendAmbianceToCluster() {
