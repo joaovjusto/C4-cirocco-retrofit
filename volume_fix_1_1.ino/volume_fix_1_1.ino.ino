@@ -1,17 +1,8 @@
-/**
-   1.1 - Corrigido LIGAR/DESLIGAR ESP se perdendo (logica invertida)
-
-   ID:
-   0x128 - Dados do cambio (SPORT/NEVE)
-   0x217 - ID para ativar ESP / PARK / PONTO CEGO... (ver doc git)
-   0x2E9 -
-
-*/
-
 #include <can.h>      // Include CAN library
 #include <mcp2515.h>  // Include MCP2515 library
 #include <SPI.h>      // Include SPI library
 #include <EEPROM.h>
+#include <pt.h>  // include protothread library
 
 struct can_frame canMsg;      // Create a structure for receiving CAN packet
 struct can_frame new_canMsg;  // Create a structure for sending CAN packet
@@ -41,7 +32,9 @@ int theme = 0x01;     // default value at startup, 01= blue, 02=bronze
 int Theme1A9Send = 0;
 unsigned long ESCtimer = 0;
 
-MCP2515 mcp2515(53);  //
+MCP2515 mcp2515(10);  //
+
+static struct pt pt1, pt2;  // each protothread needs one of these
 
 void setup()  // Set up serial interface and CAN bus interface
 {
@@ -76,110 +69,88 @@ void setup()  // Set up serial interface and CAN bus interface
   new_canMsg.data[5] = front_panel_command;  // Panel command
   new_canMsg.data[6] = volume;               // Assign the new volume level
   new_canMsg.data[7] = 0x00;                 // Empty data
+
+  PT_INIT(&pt1);  // initialise the two
+  PT_INIT(&pt2);  // protothread variables
 }
 
-void loop()  // Start reading data loop from the CAN bus
-{
-  if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK)  // If there are no errors, continue
-  {
-
-    if (canMsg.can_id == 0x00E) {  // door state
-      DriverDoor = bitRead(canMsg.data[1], 6);
-    }
-    if (canMsg.can_id == 0x236) {           // ANIMATION
-      if (!Animation_done && DriverDoor) {  // 5s timeout
-        sendAnimationToCluster();
-      }
-    }
-
-    if (canMsg.can_id == 0x1A9) {
-      if (Theme1A9Send >= 1) {
-        canTheme = canMsg;  // copy frame
-        sendNewThemeRequest();
-      }
-    }
-
-    if (canMsg.can_id == 0x2E9) {
-      // Requested ambiance change                                                                                                               //copy frame
-      sendAmbianceToCluster();
-    }
-
-    if (canMsg.can_id == 0xA2) {  // VCI state lower right (ESC)
-      LastEscState = EscState;
-      EscState = bitRead(canMsg.data[1], 4);  // ESC key
-      if (EscState && !LastEscState) {  // is pushed and wasnot pushed before
-        ESCtimer = millis();
-      }
-      if (!EscState && LastEscState) {
-        if ((millis() - ESCtimer) >= 5000) {
-          Theme1A9Send = 10;  // number of time to send 70 value (2time on nac)
-          canTheme = canMsg;
-          handleThemeSwitcher();
-        } else if ((millis() - ESCtimer) >= 2000 && (millis() - ESCtimer) <= 5000) {
-          sendEspStateEcu();
-        } else {
-          handleAmbianceSwitcher();
-        }
-      }
-    }
-
-    if (canMsg.can_id == 0x217) {  // IF MSG TRANSMITION LIGHT
-      canEsp = canMsg;
-    }
-
-    if (canMsg.can_id == 0x122)  // If the packet is from the FMUX panel
+/* exactly the same as the protothreadMainLoop function */
+static int protothreadMainLoop(struct pt *pt) {
+  static unsigned long timestamp = 0;
+  PT_BEGIN(pt);
+  while (1) {
+    if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK)  // If there are no errors, continue
     {
-      if (canMsg.data[5] == 0)  // This condition is true when the car wakes up and no volume adjustment is used on the FMUX panel or steering wheel (via Arduino)
-      {
-        steer_key_1 = 0x08;            // Assign the volume up button value to the variable
-        steer_key_2 = 0x04;            // Assign the volume down button value to the variable
-        front_panel_command = 0x02;    // Assign the value 0 to the variable (5th byte)
-      } else if (canMsg.data[5] == 2)  // This condition is true when volume adjustment is already used on the FMUX panel or steering wheel (via Arduino)
-      {
-        steer_key_1 = 0x04;          // Assign the volume down button value to the variable
-        steer_key_2 = 0x08;          // Assign the volume up button value to the variable
-        front_panel_command = 0x00;  // Assign the value 0 to the variable (5th byte)
-      } else {
-        // Do nothing, no other data available
+      if (canMsg.can_id == 0x00E) {  // door state
+        DriverDoor = bitRead(canMsg.data[1], 6);
       }
-      volume = canMsg.data[6];  // Assign the current volume control position of the FMUX panel
-    }
-
-    if (canMsg.can_id == 0x21F)  // If the packet is from the steering wheel buttons
-    {
-      if (canMsg.data[0] == steer_key_1)  // Determine which button is pressed
-      {
-        if (volume == 255) {
-          volume = 0;
-        } else {
-          volume++;
+      if (canMsg.can_id == 0x236) {           // ANIMATION
+        if (!Animation_done && DriverDoor) {  // 5s timeout
+          sendAnimationToCluster();
         }
-
-        sendVolumeLevel();
       }
 
-      if (canMsg.data[0] == steer_key_2)  // Determine which button is pressed
-      {
-        if (volume == 0) {
-          volume = 255;
-        } else {
-          volume--;
+      if (canMsg.can_id == 0x1A9) {
+        if (Theme1A9Send >= 1) {
+          canTheme = canMsg;  // copy frame
+          sendNewThemeRequest();
         }
+      }
 
-        sendVolumeLevel();
+      if (canMsg.can_id == 0xA2) {  // VCI state lower right (ESC)
+        LastEscState = EscState;
+        EscState = bitRead(canMsg.data[1], 4);  // ESC key
+        if (EscState && !LastEscState) {        // is pushed and wasnot pushed before
+          ESCtimer = millis();
+        }
+        if (!EscState && LastEscState) {
+          if ((millis() - ESCtimer) >= 5000) {
+            Theme1A9Send = 10;  // number of time to send 70 value (2time on nac)
+            canTheme = canMsg;
+            handleThemeSwitcher();
+          } else if ((millis() - ESCtimer) >= 2000 && (millis() - ESCtimer) <= 5000) {
+            sendEspStateEcu();
+          } else {
+            handleAmbianceSwitcher();
+          }
+        }
+      }
+
+      if (canMsg.can_id == 0x217) {  // IF MSG TRANSMITION LIGHT
+        canEsp = canMsg;
       }
     }
   }
+  PT_END(pt);
+}
+static int protothreadAmbianceKeeper(struct pt *pt) {
+  static unsigned long timestamp = 0;
+  PT_BEGIN(pt);
+  while (1) {
+    if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK)  // If there are no errors, continue
+    {
+      if (canMsg.can_id == 0x2E9) {
+        // Requested ambiance change                                                                                                               //copy frame
+        sendAmbianceToCluster();
+      }
+    }
+  }
+  PT_END(pt);
 }
 
-void sendAnimationToCluster() {
+void loop() {
+  protothreadMainLoop(&pt1);  // schedule the two protothreads
+  protothreadAmbianceKeeper(&pt2); // by calling them infinitely
+}
+
+inline void sendAnimationToCluster() {
   canAnimationSender = canMsg;  // copy frame
   canAnimationSender.data[5] = bitWrite(canAnimationSender.data[5], 6, 1);
   mcp2515.sendMessage(&canAnimationSender);
   Animation_done = true;
 }
 
-void handleThemeSwitcher() {
+inline void handleThemeSwitcher() {
   switch (theme) {
     case 0x01:
       theme = 0x02;
@@ -197,7 +168,7 @@ void handleThemeSwitcher() {
   mcp2515.sendMessage(&canTheme);
 }
 
-void handleAmbianceSwitcher() {
+inline void handleAmbianceSwitcher() {
   switch (ambiance) {
     case 0x0E:
       ambiance = 0x4E;
@@ -216,13 +187,13 @@ void handleAmbianceSwitcher() {
   EEPROM.update(0, ambiance);
 }
 
-void sendNewThemeRequest() {
+inline void sendNewThemeRequest() {
   Theme1A9Send = Theme1A9Send - 1;
   canTheme.data[6] = bitWrite(canTheme.data[6], 5, 1);
   mcp2515.sendMessage(&canTheme);
 }
 
-void sendAmbianceToCluster() {
+inline void sendAmbianceToCluster() {
   canAmbiance.data[0] = ((canAmbiance.data[0] & 0xFC) | (theme & 0x03));                     //theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
   canAmbiance.data[1] = ((canAmbiance.data[1] & 0x3F) | (ambiance & 0xC0));                  //ambiance value is only in bit 6&7=0xC0 mask
   if ((canMsg.data[0] != canAmbiance.data[0]) || (canMsg.data[1] != canAmbiance.data[1])) {  // diffrent value received from NAC, we need to request the new value
@@ -230,15 +201,8 @@ void sendAmbianceToCluster() {
   }
 }
 
-void sendEspStateEcu() {
+inline void sendEspStateEcu() {
   bitWrite(canEsp.data[2], 6, 1);
 
   mcp2515.sendMessage(&canEsp);
-}
-
-void sendVolumeLevel() {
-  new_canMsg.data[5] = front_panel_command;  // Panel command
-  new_canMsg.data[6] = volume;               // Assign the new volume level
-
-  mcp2515.sendMessage(&new_canMsg);  // Send the new volume level command
 }
