@@ -68,9 +68,13 @@ void setup() // Set up serial interface and CAN bus interface
 
 void loop() // Start reading data loop from the CAN bus
 {
+  // Serial.println("BOMBOU");
+  mcp2515.readMessage(&canMsg);
+  Serial.println(canMsg.can_id);
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) // If there are no errors, continue
   {
 
+    Serial.println("BOMBOU dentro");
     if (canMsg.can_id == 0x00E)
     { // door state
       DriverDoor = bitRead(canMsg.data[1], 6);
