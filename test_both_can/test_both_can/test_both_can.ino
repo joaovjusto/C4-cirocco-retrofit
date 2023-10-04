@@ -40,10 +40,13 @@ struct can_frame canFakeIgnitionOn;  // Create a structure for sending not peuge
 
 struct can_frame canTransmition;  // Create a structure for sending not peugeot logo
 
+struct can_frame canSrc;  // Create a structure for sending not peugeot logo
+
 struct can_frame canMsgSnd;
 struct can_frame canMsgRcv;
 
 // Bool for avoiding duplicate push
+bool sendSRC = false;
 bool sportMode = false;
 bool SAMsend = false;
 bool SAM_NAC = false;
@@ -69,6 +72,10 @@ bool LastEscState = false;
 int ambiance = 0x0E;  // default value at startup, 0E= off, 8E=relax ambiance,  4E= boost ambiance
 int theme = 0x01;     // default value at startup, 01= blue, 02=bronze
 int Theme1A9Send = 0;
+int volume = 0;
+int front_panel_command;  // Declare a variable for FMUX panel command (5 bytes - numbering from 0)
+int steer_key_1;          // Declare a variable for steering wheel button command
+int steer_key_2;          // Declare a variable for steering wheel button command
 unsigned long ESCtimer = 0;
 
 void setup() {
@@ -115,8 +122,7 @@ void loop() {
 
     CAN1.sendMessage(&canMsgRcv);
 
-    if (id == 0x217)
-    { // IF MSG TRANSMITION LIGHT
+    if (id == 0x217) {  // IF MSG TRANSMITION LIGHT
       canTransmition = canMsgRcv;
     }
 
@@ -137,19 +143,38 @@ void loop() {
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
 
-    if (sportMode)
+    if (id == 0x122)  // If the packet is from the FMUX panel
     {
-        Serial.println("Sport mode ON");
-        bitWrite(canTransmition.data[2], 6, 1);
+      if(sendSRC) {
+        Serial.println("MANDANDO COMANDO");
+        sendSRC = false;
 
-        CAN1.sendMessage(&canTransmition);
+        canMsgSnd = canMsgRcv;
+
+        canMsgSnd.data[1] = 32;
+        // canMsgSnd.data[1] = 20; -- ESSE VALOR MANDA PRO CARPLAY
+        CAN1.sendMessage(&canMsgSnd);
+      }
+    }
+
+    if (id == 0x21F)  // If the packet is from the steering wheel buttons
+    {
+      if(canMsgRcv.data[2] == 64) {
+        sendSRC = true;
+      }
+    }
+
+    if (sportMode) {
+      Serial.println("Sport mode ON");
+      bitWrite(canTransmition.data[2], 6, 1);
+
+      CAN1.sendMessage(&canTransmition);
     }
 
     if (id == 0x128) {  // IF TRANSMITION THEME
       if (canMsgRcv.data[2] == 32) {
         sportMode = true;
-      } 
-      else {
+      } else {
         sportMode = false;
       }
     }
