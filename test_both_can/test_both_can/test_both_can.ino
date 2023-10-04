@@ -38,10 +38,13 @@ struct can_frame canLogo;  // Create a structure for sending not peugeot logo
 
 struct can_frame canFakeIgnitionOn;  // Create a structure for sending not peugeot logo
 
+struct can_frame canTransmition;  // Create a structure for sending not peugeot logo
+
 struct can_frame canMsgSnd;
 struct can_frame canMsgRcv;
 
 // Bool for avoiding duplicate push
+bool sportMode = false;
 bool SAMsend = false;
 bool SAM_NAC = false;
 bool lastSAM_NAC = false;
@@ -111,12 +114,45 @@ void loop() {
     int len = canMsgRcv.can_dlc;
 
     CAN1.sendMessage(&canMsgRcv);
+
+    if (id == 0x217)
+    { // IF MSG TRANSMITION LIGHT
+      canTransmition = canMsgRcv;
+    }
+
+    // if (id == 0x217 && SAMsend) {  // 217 received and something need to be send
+    //   Serial.println("217 received");
+    //   canMsgSnd = canMsgRcv;  // copy frame
+    //   canMsgSnd.data[3] = bitWrite(canMsgSnd.data[3], 3, SAMsend);
+    //   SAMsend = false;
+    //   Serial.println("SAM struture written and SAMsend reset CIROCCO");
+    //   CAN0.sendMessage(&canMsgSnd);
+    //   CAN1.sendMessage(&canMsgSnd);
+    //   Serial.println("217 sent");
+    // }
   }
 
   // Listen CAR MESSAGES
   if (CAN1.readMessage(&canMsgRcv) == MCP2515::ERROR_OK) {
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
+
+    if (sportMode)
+    {
+        Serial.println("Sport mode ON");
+        bitWrite(canTransmition.data[2], 6, 1);
+
+        CAN1.sendMessage(&canTransmition);
+    }
+
+    if (id == 0x128) {  // IF TRANSMITION THEME
+      if (canMsgRcv.data[2] == 32) {
+        sportMode = true;
+      } 
+      else {
+        sportMode = false;
+      }
+    }
 
     if (id == 0x236) {                      // ANIMATION
       if (!Animation_done && DriverDoor) {  // 5s timeout
@@ -158,36 +194,25 @@ void loop() {
       }
     }
 
+    // if (id == 0x2D1) {  // frame for SAM state (turn on cirocco line)
+    //   SAMstatus = bitRead(canMsgRcv.data[0], 2);
+    //   if (!SAMstatus && ignition) {
+    //     Serial.println("SAM ON");
+    //   } else {
+    //     Serial.println("SAM OFF");
+    //   }
 
-    if (id == 0x217 && SAMsend) {  // 217 received and something need to be send
-      // Serial.println("217 received");
-      canMsgSnd = canMsgRcv;  // copy frame
-      canMsgSnd.data[3] = bitWrite(canMsgSnd.data[3], 3, SAMsend);
-      SAMsend = false;
-      // Serial.println("SAM struture written and SAMsend reset");
-      CAN0.sendMessage(&canMsgSnd);
-      // Serial.println("217 sent");
-    }
-
-    if (id == 0x2D1) {  // frame for SAM state (turn on cirocco line)
-      SAMstatus = bitRead(canMsgRcv.data[0], 2);
-      if (!SAMstatus && ignition) {
-        Serial.println("SAM ON");
-      } else {
-        Serial.println("SAM OFF");
-      }
-
-      if (SAMstatus == 0) {  // SAM active
-        canMsgSnd.can_id = 0x321;
-        canMsgSnd.can_dlc = 5;
-        canMsgSnd.data[0] = 0x0;
-        canMsgSnd.data[1] = 0x0;
-        canMsgSnd.data[2] = 0x0;
-        canMsgSnd.data[3] = 0x0;
-        canMsgSnd.data[4] = 0x0;
-        CAN0.sendMessage(&canMsgSnd);  // send 0x321 frame to turn on indicator
-      }
-    }
+    //   if (SAMstatus == 0) {  // SAM active
+    //     canMsgSnd.can_id = 0x321;
+    //     canMsgSnd.can_dlc = 5;
+    //     canMsgSnd.data[0] = 0x0;
+    //     canMsgSnd.data[1] = 0x0;
+    //     canMsgSnd.data[2] = 0x0;
+    //     canMsgSnd.data[3] = 0x0;
+    //     canMsgSnd.data[4] = 0x0;
+    //     CAN1.sendMessage(&canMsgSnd);  // send 0x321 frame to turn on indicator
+    //   }
+    // }
 
     if (id == 0xF6) {  // If for turning indicator ignition
 
