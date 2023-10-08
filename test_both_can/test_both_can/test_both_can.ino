@@ -10,8 +10,8 @@
 //  Configuration  //
 /////////////////////
 
-#define CS_PIN_CAN0 10  // pin connected to NAC/cirocco CAN bus module
-#define CS_PIN_CAN1 9   // pin connected to CVM CAN bus module
+#define CS_PIN_CAN0 9  // pin connected to NAC/cirocco CAN bus module
+#define CS_PIN_CAN1 10   // pin connected to CVM CAN bus module
 #define SERIAL_SPEED 115200
 #define CAN_SPEED CAN_125KBPS  // Diagnostic CAN bus - High Speed
 #define CAN_FREQ MCP_8MHZ      // Switch to 16MHZ if you have a 16Mhz module
@@ -47,24 +47,17 @@ struct can_frame canMsgRcv;
 
 // Bool for avoiding duplicate push
 bool sendSRC = false;
-bool sportMode = false;
-bool SAMsend = false;
-bool SAM_NAC = false;
-bool lastSAM_NAC = false;
+bool sportMode = false;;
 
 bool Animation_done = false;  // set to true to not do animation
 bool DriverDoor = false;
 
 // Stop Start deletion
-bool EngineBeenStarted = false;
-bool SSdesactivationDone = false;
-bool SSrequest = false;
 bool ignition = false;
 
 // MEM fix
 bool Lastingnition = false;
 unsigned long ignitiontimer = 0;
-bool SAMstatus = false;
 
 // ambiance
 bool EscState = false;
@@ -125,17 +118,6 @@ void loop() {
     if (id == 0x217) {  // IF MSG TRANSMITION LIGHT
       canTransmition = canMsgRcv;
     }
-
-    // if (id == 0x217 && SAMsend) {  // 217 received and something need to be send
-    //   Serial.println("217 received");
-    //   canMsgSnd = canMsgRcv;  // copy frame
-    //   canMsgSnd.data[3] = bitWrite(canMsgSnd.data[3], 3, SAMsend);
-    //   SAMsend = false;
-    //   Serial.println("SAM struture written and SAMsend reset CIROCCO");
-    //   CAN0.sendMessage(&canMsgSnd);
-    //   CAN1.sendMessage(&canMsgSnd);
-    //   Serial.println("217 sent");
-    // }
   }
 
   // Listen CAR MESSAGES
@@ -145,7 +127,7 @@ void loop() {
 
     if (id == 0x122)  // If the packet is from the FMUX panel
     {
-      if(sendSRC) {
+      if (sendSRC) {
         Serial.println("MANDANDO COMANDO");
         sendSRC = false;
 
@@ -159,7 +141,7 @@ void loop() {
 
     if (id == 0x21F)  // If the packet is from the steering wheel buttons
     {
-      if(canMsgRcv.data[2] == 64) {
+      if (canMsgRcv.data[2] == 64) {
         sendSRC = true;
       }
     }
@@ -169,6 +151,8 @@ void loop() {
       bitWrite(canTransmition.data[2], 6, 1);
 
       CAN1.sendMessage(&canTransmition);
+
+      sportMode = false;
     }
 
     if (id == 0x128) {  // IF TRANSMITION THEME
@@ -179,23 +163,10 @@ void loop() {
       }
     }
 
-    if (id == 0x236) {                      // ANIMATION
-      if (!Animation_done && DriverDoor) {  // 5s timeout
-        canMsgSnd = canMsgRcv;              // copy frame
-        canMsgSnd.data[5] = bitWrite(canMsgSnd.data[5], 6, 1);
-        CAN0.sendMessage(&canMsgSnd);
-        Animation_done = true;
-      }
-    }
-
     // Block to Jump peugeot Logo
-    if (ignition == false) {
-      // FAKE IGNITION ON
-      if (id == 0xF6) {
-        canFakeIgnitionOn.data[0] = 0x88;
-
-        CAN0.sendMessage(&canFakeIgnitionOn);
-      } else if (id == 0x2E9) {
+    if (!ignition) {
+      // PERSIST AMBIANCE
+      if (id == 0x2E9) {
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canMsgRcv;
@@ -219,28 +190,7 @@ void loop() {
       }
     }
 
-    // if (id == 0x2D1) {  // frame for SAM state (turn on cirocco line)
-    //   SAMstatus = bitRead(canMsgRcv.data[0], 2);
-    //   if (!SAMstatus && ignition) {
-    //     Serial.println("SAM ON");
-    //   } else {
-    //     Serial.println("SAM OFF");
-    //   }
-
-    //   if (SAMstatus == 0) {  // SAM active
-    //     canMsgSnd.can_id = 0x321;
-    //     canMsgSnd.can_dlc = 5;
-    //     canMsgSnd.data[0] = 0x0;
-    //     canMsgSnd.data[1] = 0x0;
-    //     canMsgSnd.data[2] = 0x0;
-    //     canMsgSnd.data[3] = 0x0;
-    //     canMsgSnd.data[4] = 0x0;
-    //     CAN1.sendMessage(&canMsgSnd);  // send 0x321 frame to turn on indicator
-    //   }
-    // }
-
     if (id == 0xF6) {  // If for turning indicator ignition
-
       Lastingnition = ignition;
       ignition = bitRead(canMsgRcv.data[0], 3);
       if (ignition && !Lastingnition) {
@@ -251,8 +201,6 @@ void loop() {
         canFakeIgnitionOn.data[0] = 0x88;
 
         CAN0.sendMessage(&canFakeIgnitionOn);
-        SSdesactivationDone = false;  // request a new SS desactivation  if ignition is off
-        EngineBeenStarted = false;    // reset EngineBeenStarted (if ignition off engine can't be running) If not reseted, on "warm" start (arduino not powered off between 2 engine start) SS will deactivate when as soon as ignition is on
       }
     }
 
@@ -266,10 +214,6 @@ void loop() {
         Serial.print("Theme1A9sent (70), new number is:  ");
         Serial.println(Theme1A9Send, DEC);
       }
-    }
-
-    if (id == 0x00E) {  // door state
-      DriverDoor = bitRead(canMsgRcv.data[1], 6);
     }
 
     if (id == 0xA2) {  // VCI state lower right (ESC)
@@ -299,8 +243,6 @@ void loop() {
 
           Serial.println(theme);
 
-          // canTheme = canMsgRcv;
-          // copy frame
           canTheme.data[0] = ((canTheme.data[0] & 0xFC) | (theme & 0x03));  // theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
                                                                             //  if ((canTheme.data[0] != canTheme.data[0]) || (canTheme.data[1] != canTheme.data[1])) {  //diffrent value received from NAC, we need to request the new value
           CAN1.sendMessage(&canTheme);
