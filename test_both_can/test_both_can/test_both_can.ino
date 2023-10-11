@@ -49,7 +49,6 @@ struct can_frame canMsgRcv;
 bool sendSRC = false;
 bool sportMode = false;
 
-bool Animation_done = false;  // set to true to not do animation
 bool DriverDoor = false;
 
 // Stop Start deletion
@@ -58,6 +57,7 @@ bool ignition = false;
 // MEM fix
 bool Lastingnition = false;
 unsigned long ignitiontimer = 0;
+
 
 // ambiance
 bool EscState = false;
@@ -108,6 +108,13 @@ void loop() {
 
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
+
+    if (id == 0x00E)
+    { // door state
+      DriverDoor = bitRead(canMsgRcv.data[1], 6);
+      Serial.print("DriverDoor is  :  ");
+      Serial.println(DriverDoor);
+    }
 
     // Serial.println("CAN0");
     // Serial.println(id);
@@ -165,6 +172,13 @@ void loop() {
       }
     }
 
+    if (id == 0x00E)
+    { // door state
+      DriverDoor = bitRead(canMsgRcv.data[1], 6);
+      Serial.print("DriverDoor is  :  ");
+      Serial.println(DriverDoor);
+    }
+
     // Block to Jump peugeot Logo
     if (!ignition) {
       // PERSIST AMBIANCE
@@ -172,13 +186,15 @@ void loop() {
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canMsgRcv;
-      } else
+      } 
+      else
         // FAKE DARK MODE
         if (id == 0x036) {
           canLogo = canMsgRcv;
           canLogo.data[3] = 0x35;
           CAN0.sendMessage(&canLogo);
-        } else {
+        } 
+        else {
           CAN0.sendMessage(&canMsgRcv);
         }
     } else {
@@ -199,6 +215,9 @@ void loop() {
         ignitiontimer = millis();
       }  // ignition switched to ON
       if (!ignition) {
+        canLogo.data[3] = 0x35;
+          CAN0.sendMessage(&canLogo);
+
         canFakeIgnitionOn = canMsgRcv;
         canFakeIgnitionOn.data[0] = 0x88;
 
