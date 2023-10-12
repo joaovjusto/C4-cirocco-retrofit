@@ -87,19 +87,10 @@ void setup() {
   CAN0.reset();
   CAN0.setBitrate(CAN_SPEED, CAN_FREQ);
   CAN0.setNormalMode();
-  while (CAN0.setNormalMode() != MCP2515::ERROR_OK) {
-    delay(100);
-    Serial.println("can0 ok");
-  }
 
   CAN1.reset();
   CAN1.setBitrate(CAN_SPEED, CAN_FREQ);
   CAN1.setNormalMode();
-  // CAN1.setListenOnlyMode();
-  while (CAN1.setNormalMode() != MCP2515::ERROR_OK) {
-    delay(100);
-    Serial.println("can1 ok");
-  }
 }
 
 void loop() {
@@ -186,7 +177,7 @@ void loop() {
         canAmbiance.data[0] = theme;
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
-        canTheme = canMsgRcv;
+        canTheme = canAmbiance;
       } 
       else
         // FAKE DARK MODE
@@ -196,6 +187,9 @@ void loop() {
           CAN0.sendMessage(&canLogo);
         } 
         else {
+          canFakeIgnitionOn.data[0] = 0x88;
+
+          CAN0.sendMessage(&canFakeIgnitionOn);
           CAN0.sendMessage(&canMsgRcv);
         }
     } else {
@@ -204,7 +198,7 @@ void loop() {
         canAmbiance.data[0] = theme;
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
-        canTheme = canMsgRcv;
+        canTheme = canAmbiance;
       } else {
         CAN0.sendMessage(&canMsgRcv);
       }
@@ -218,7 +212,7 @@ void loop() {
       }  // ignition switched to ON
       if (!ignition) {
         canLogo.data[3] = 0x35;
-          CAN0.sendMessage(&canLogo);
+        CAN0.sendMessage(&canLogo);
 
         canFakeIgnitionOn = canMsgRcv;
         canFakeIgnitionOn.data[0] = 0x88;
