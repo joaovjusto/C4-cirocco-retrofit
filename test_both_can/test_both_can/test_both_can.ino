@@ -72,7 +72,7 @@ void setup() {
 
   canAmbiance.can_id = 0x2E9;      // Assign the FMUX panel id
   canAmbiance.can_dlc = 4;         // Specify the length of the packet
-  canAmbiance.data[0] = 0x01;      // Empty data
+  canAmbiance.data[0] = theme;      // Empty data
   canAmbiance.data[1] = ambiance;  // Empty data
   canAmbiance.data[2] = 0x58;      // Empty data
   canAmbiance.data[3] = 0x00;      // Empty data
@@ -183,6 +183,7 @@ void loop() {
     if (!ignition) {
       // PERSIST AMBIANCE
       if (id == 0x2E9) {
+        canAmbiance.data[0] = theme;
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canMsgRcv;
@@ -200,6 +201,7 @@ void loop() {
     } else {
       // Normal flux
       if (id == 0x2E9) {
+        canAmbiance.data[0] = theme;
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canMsgRcv;
