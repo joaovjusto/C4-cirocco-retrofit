@@ -30,6 +30,10 @@ bool SerialEnabled = true;
 
 // CAN-BUS Messages
 
+struct can_frame canTemp;  // Can send temp off
+
+struct can_frame canOff;  // Can send km/h off
+
 struct can_frame canAmbiance;  // Create a structure for sending CAN packet
 
 struct can_frame canTheme;  // Create a structure for sending CAN packet
@@ -72,10 +76,32 @@ void setup() {
 
   canAmbiance.can_id = 0x2E9;      // Assign the FMUX panel id
   canAmbiance.can_dlc = 4;         // Specify the length of the packet
-  canAmbiance.data[0] = theme;      // Empty data
+  canAmbiance.data[0] = theme;     // Empty data
   canAmbiance.data[1] = ambiance;  // Empty data
   canAmbiance.data[2] = 0x58;      // Empty data
   canAmbiance.data[3] = 0x00;      // Empty data
+
+  canOff.can_id = 0x0F6;
+  canOff.can_dlc = 8;
+  canTemp.data[0] = 1;
+  canTemp.data[1] = 0;
+  canTemp.data[2] = 0;
+  canTemp.data[3] = 0;
+  canTemp.data[4] = 0;
+  canTemp.data[5] = 0;
+  canTemp.data[6] = 0;
+  canTemp.data[7] = 0;
+
+  canOff.can_id = 0x0B6;
+  canOff.can_dlc = 8;
+  canOff.data[0] = 0;
+  canOff.data[1] = 0;
+  canOff.data[2] = 0;
+  canOff.data[3] = 0;
+  canOff.data[4] = 0;
+  canOff.data[5] = 0;
+  canOff.data[6] = 0;
+  canOff.data[7] = 0;
 
   if (SerialEnabled) {
     // Initalize Serial for debug
@@ -100,11 +126,10 @@ void loop() {
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
 
-    if (id == 0x00E)
-    { // door state
+    if (id == 0x00E) {  // door state
       DriverDoor = bitRead(canMsgRcv.data[1], 6);
-      Serial.print("DriverDoor is  :  ");
-      Serial.println(DriverDoor);
+      // Serial.print("DriverDoor is  :  ");
+      // Serial.println(DriverDoor);
     }
 
     // Serial.println("CAN0");
@@ -128,7 +153,7 @@ void loop() {
     if (id == 0x122)  // If the packet is from the FMUX panel
     {
       if (sendSRC) {
-        Serial.println("MANDANDO COMANDO");
+        // Serial.println("MANDANDO COMANDO");
         sendSRC = false;
 
         canMsgSnd = canMsgRcv;
@@ -147,7 +172,7 @@ void loop() {
     }
 
     if (sportMode) {
-      Serial.println("Sport mode ON");
+      // Serial.println("Sport mode ON");
       bitWrite(canTransmition.data[2], 6, 1);
 
       CAN1.sendMessage(&canTransmition);
@@ -163,11 +188,10 @@ void loop() {
       }
     }
 
-    if (id == 0x00E)
-    { // door state
+    if (id == 0x00E) {  // door state
       DriverDoor = bitRead(canMsgRcv.data[1], 6);
-      Serial.print("DriverDoor is  :  ");
-      Serial.println(DriverDoor);
+      // Serial.print("DriverDoor is  :  ");
+      // Serial.println(DriverDoor);
     }
 
     // Block to Jump peugeot Logo
@@ -178,19 +202,36 @@ void loop() {
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canAmbiance;
-      } 
-      else
+      } else
         // FAKE DARK MODE
         if (id == 0x036) {
           canLogo = canMsgRcv;
           canLogo.data[3] = 0x35;
+          canLogo.data[4] = 1;
           CAN0.sendMessage(&canLogo);
+        } else if (id == 0x0B6) {
+          // Serial.println("CAN1 log odometro");
+          // Serial.println(canMsgRcv.data[2]);
+          // Serial.println(canMsgRcv.data[6]);
+          CAN0.sendMessage(&canOff);
+        } else if(id == 0x128) {
+          canMsgRcv.data[0] = 0;
+          canMsgRcv.data[1] = 0;
+          canMsgRcv.data[2] = 0;
+          canMsgRcv.data[3] = 0;
+          canMsgRcv.data[4] = 0;
+          canMsgRcv.data[5] = 0;
+          canMsgRcv.data[6] = 0;
+          canMsgRcv.data[7] = 1;
+
+          CAN0.sendMessage(&canMsgRcv);
         } 
         else {
-          canFakeIgnitionOn.data[0] = 0x88;
+          canFakeIgnitionOn.data[0] = 0x88; 
 
+          CAN0.sendMessage(&canTemp);
           CAN0.sendMessage(&canFakeIgnitionOn);
-          CAN0.sendMessage(&canMsgRcv);
+          // CAN0.sendMessage(&canMsgRcv);
         }
     } else {
       // Normal flux
@@ -199,7 +240,8 @@ void loop() {
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canAmbiance;
-      } else {
+      } 
+      else {
         CAN0.sendMessage(&canMsgRcv);
       }
     }
@@ -228,8 +270,8 @@ void loop() {
         canTheme.data[6] = bitWrite(canTheme.data[6], 5, 1);
         CAN0.sendMessage(&canTheme);
         CAN1.sendMessage(&canTheme);
-        Serial.print("Theme1A9sent (70), new number is:  ");
-        Serial.println(Theme1A9Send, DEC);
+        // Serial.print("Theme1A9sent (70), new number is:  ");
+        // Serial.println(Theme1A9Send, DEC);
       }
     }
 
@@ -238,13 +280,13 @@ void loop() {
       EscState = bitRead(canMsgRcv.data[1], 4);  // ESC key
       // Serial.println(EscState);
       if (EscState && !LastEscState) {  // is pushed and wasnot pushed before
-        Serial.println("ESC pressed");
+        // Serial.println("ESC pressed");
         ESCtimer = millis();
       }
       if (!EscState && LastEscState) {
-        Serial.println("ESC released");
+        // Serial.println("ESC released");
         if ((millis() - ESCtimer) >= 1000) {
-          Serial.println("ESC long press");
+          // Serial.println("ESC long press");
           Theme1A9Send = 2;  // number of time to send 70 value (2time on nac)
           switch (theme) {
             case 0x01:
@@ -258,17 +300,17 @@ void loop() {
               break;  // return to off for any other value
           }
 
-          Serial.println(theme);
+          // Serial.println(theme);
 
           canTheme.data[0] = ((canTheme.data[0] & 0xFC) | (theme & 0x03));  // theme value is only in bit0&1 =0x03 mask  0xFC is reseting SndData -->  DDDDDD00 | 000000TT   D=original data, T=theme
                                                                             //  if ((canTheme.data[0] != canTheme.data[0]) || (canTheme.data[1] != canTheme.data[1])) {  //diffrent value received from NAC, we need to request the new value
           CAN1.sendMessage(&canTheme);
           CAN0.sendMessage(&canTheme);
 
-          Serial.print("Theme is  :  ");
-          Serial.println(theme, HEX);
+          // Serial.print("Theme is  :  ");
+          // Serial.println(theme, HEX);
         } else {
-          Serial.println("ESC short press");
+          // Serial.println("ESC short press");
           switch (ambiance) {
             case 0x0E:
               ambiance = 0x4E;
@@ -286,8 +328,8 @@ void loop() {
 
           EEPROM.update(0, ambiance);
 
-          Serial.print("ambiance is  :  ");
-          Serial.println(ambiance, HEX);
+          // Serial.print("ambiance is  :  ");
+          // Serial.println(ambiance, HEX);
         }
       }
     }
