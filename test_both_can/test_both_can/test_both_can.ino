@@ -231,7 +231,7 @@ void loop() {
 
           CAN0.sendMessage(&canTemp);
           CAN0.sendMessage(&canFakeIgnitionOn);
-          // CAN0.sendMessage(&canMsgRcv);
+          CAN0.sendMessage(&canMsgRcv);
         }
     } else {
       // Normal flux
