@@ -30,9 +30,7 @@ bool SerialEnabled = true;
 
 // CAN-BUS Messages
 
-struct can_frame canTemp;  // Can send temp off
-
-struct can_frame canOff;  // Can send km/h off
+struct can_frame canOff;  // Create a structure for sending CAN packet
 
 struct can_frame canAmbiance;  // Create a structure for sending CAN packet
 
@@ -52,8 +50,6 @@ struct can_frame canMsgRcv;
 // Bool for avoiding duplicate push
 bool sendSRC = false;
 bool sportMode = false;
-
-bool DriverDoor = false;
 
 // Stop Start deletion
 bool ignition = false;
@@ -81,28 +77,6 @@ void setup() {
   canAmbiance.data[2] = 0x58;      // Empty data
   canAmbiance.data[3] = 0x00;      // Empty data
 
-  canOff.can_id = 0x0F6;
-  canOff.can_dlc = 8;
-  canTemp.data[0] = 1;
-  canTemp.data[1] = 0;
-  canTemp.data[2] = 0;
-  canTemp.data[3] = 0;
-  canTemp.data[4] = 0;
-  canTemp.data[5] = 0;
-  canTemp.data[6] = 0;
-  canTemp.data[7] = 0;
-
-  canOff.can_id = 0x0B6;
-  canOff.can_dlc = 8;
-  canOff.data[0] = 0;
-  canOff.data[1] = 0;
-  canOff.data[2] = 0;
-  canOff.data[3] = 0;
-  canOff.data[4] = 0;
-  canOff.data[5] = 0;
-  canOff.data[6] = 0;
-  canOff.data[7] = 0;
-
   if (SerialEnabled) {
     // Initalize Serial for debug
     Serial.begin(SERIAL_SPEED);
@@ -125,15 +99,6 @@ void loop() {
 
     int id = canMsgRcv.can_id;
     int len = canMsgRcv.can_dlc;
-
-    if (id == 0x00E) {  // door state
-      DriverDoor = bitRead(canMsgRcv.data[1], 6);
-      // Serial.print("DriverDoor is  :  ");
-      // Serial.println(DriverDoor);
-    }
-
-    // Serial.println("CAN0");
-    // Serial.println(id);
 
     CAN1.sendMessage(&canMsgRcv);
 
@@ -171,66 +136,67 @@ void loop() {
       }
     }
 
-    if (sportMode) {
-      // Serial.println("Sport mode ON");
-      bitWrite(canTransmition.data[2], 6, 1);
-
-      CAN1.sendMessage(&canTransmition);
-
-      // sportMode = false;
-    }
-
     if (id == 0x128) {  // IF TRANSMITION THEME
       if (canMsgRcv.data[2] == 32) {
-        sportMode = true;
-      } else {
+        if (sportMode) {
+          bitWrite(canTransmition.data[2], 6, 1);
+
+          CAN1.sendMessage(&canTransmition);
+        }
         sportMode = false;
+      } else {
+        sportMode = true;
       }
     }
 
-    if (id == 0x00E) {  // door state
-      DriverDoor = bitRead(canMsgRcv.data[1], 6);
-      // Serial.print("DriverDoor is  :  ");
-      // Serial.println(DriverDoor);
-    }
-
     // Block to Jump peugeot Logo
+    // Serial.println(ignition);
+    if (id == 0x036) {
+        //   canLogo = canMsgRcv;
+        //   canLogo.data[3] = 0x35;
+        //   canLogo.data[4] = 1;
+        //   CAN0.sendMessage(&canLogo);
+        // SEGREDO ESTA AQUI 177 ligado
+        Serial.println(canMsgRcv.data[3]);
+        // Serial.println(canMsgRcv.data[4]);
+        }
     if (!ignition) {
       // PERSIST AMBIANCE
-      if (id == 0x2E9) {
-        canAmbiance.data[0] = theme;
-        canAmbiance.data[1] = ambiance;
-        CAN0.sendMessage(&canAmbiance);
-        canTheme = canAmbiance;
-      } else
+      // if (id == 0x2E9) {
+      //   canAmbiance.data[0] = theme;
+      //   canAmbiance.data[1] = ambiance;
+      //   CAN0.sendMessage(&canAmbiance);
+      //   canTheme = canAmbiance;
+      // } else
         // FAKE DARK MODE
         if (id == 0x036) {
-          canLogo = canMsgRcv;
-          canLogo.data[3] = 0x35;
-          canLogo.data[4] = 1;
-          CAN0.sendMessage(&canLogo);
-        } else if (id == 0x0B6) {
-          // Serial.println("CAN1 log odometro");
-          // Serial.println(canMsgRcv.data[2]);
+        //   canLogo = canMsgRcv;
+        //   canLogo.data[3] = 0x35;
+        //   canLogo.data[4] = 1;
+        //   CAN0.sendMessage(&canLogo);
+        // SEGREDO ESTA AQUI 177 ligado
+        // Serial.println(canMsgRcv.data[4]);
+        } else 
+        if (id == 0x128) {
+          Serial.println("ESTOU ASQUI");
           // Serial.println(canMsgRcv.data[6]);
+
+          canOff = canMsgRcv;
+
+          canOff.data[0] = 0;
+          canOff.data[1] = 0;
+          canOff.data[2] = 0;
+          canOff.data[3] = 0;
+          canOff.data[4] = 0;
+          canOff.data[5] = 0;
+          canOff.data[6] = 0;
+          canOff.data[7] = 0;
+
           CAN0.sendMessage(&canOff);
-        } else if(id == 0x128) {
-          canMsgRcv.data[0] = 0;
-          canMsgRcv.data[1] = 0;
-          canMsgRcv.data[2] = 0;
-          canMsgRcv.data[3] = 0;
-          canMsgRcv.data[4] = 0;
-          canMsgRcv.data[5] = 0;
-          canMsgRcv.data[6] = 0;
-          canMsgRcv.data[7] = 1;
-
-          CAN0.sendMessage(&canMsgRcv);
-        } 
-        else {
-          canFakeIgnitionOn.data[0] = 0x88; 
-
-          CAN0.sendMessage(&canTemp);
-          CAN0.sendMessage(&canFakeIgnitionOn);
+        } else {
+          CAN0.sendMessage(&canOff);
+          canFakeIgnitionOn.data[0] = 0x88;
+          // CAN0.sendMessage(&canFakeIgnitionOn);
           CAN0.sendMessage(&canMsgRcv);
         }
     } else {
@@ -240,8 +206,7 @@ void loop() {
         canAmbiance.data[1] = ambiance;
         CAN0.sendMessage(&canAmbiance);
         canTheme = canAmbiance;
-      } 
-      else {
+      } else {
         CAN0.sendMessage(&canMsgRcv);
       }
     }
@@ -253,13 +218,13 @@ void loop() {
         ignitiontimer = millis();
       }  // ignition switched to ON
       if (!ignition) {
+        CAN0.sendMessage(&canOff);
         canLogo.data[3] = 0x35;
         CAN0.sendMessage(&canLogo);
 
         canFakeIgnitionOn = canMsgRcv;
         canFakeIgnitionOn.data[0] = 0x88;
-
-        CAN0.sendMessage(&canFakeIgnitionOn);
+        // CAN0.sendMessage(&canFakeIgnitionOn);
       }
     }
 
