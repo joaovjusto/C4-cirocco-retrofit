@@ -40,8 +40,6 @@ struct can_frame canLogo;  // Create a structure for sending not peugeot logo
 
 struct can_frame canFakeIgnitionOn;  // Create a structure for sending not peugeot logo
 
-struct can_frame canTransmition;  // Create a structure for sending not peugeot logo
-
 struct can_frame canSrc;  // Create a structure for sending not peugeot logo
 
 struct can_frame canMsgSnd;
@@ -98,12 +96,8 @@ void loop() {
 
     CAN1.sendMessage(&canMsgRcv);
 
-    if(!ignition) {
+    if(!ignition && Lastingnition) {
       CAN0.sendMessage(&canOff);
-    }
-
-    if (id == 0x217) {  // IF MSG TRANSMITION LIGHT
-      canTransmition = canMsgRcv;
     }
   }
 
@@ -129,7 +123,7 @@ void loop() {
           canOff.data[6] = 0;
           canOff.data[7] = 0;
 
-          // CAN0.sendMessage(&canOff);
+          CAN0.sendMessage(&canOff);
         } else {
           // CAN0.sendMessage(&canOff);
           canFakeIgnitionOn.data[0] = 0x88;
