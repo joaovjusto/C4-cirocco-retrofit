@@ -207,6 +207,7 @@ void loop() {
               ambiance = 0x0E;
               break;  // return to off for any other value
           }
+          EEPROM.update(0, ambiance);
         }
       }
     }
