@@ -109,8 +109,6 @@ void loop() {
     // Block to Jump peugeot Logo
     if (!ignition) {
         if (id == 0x128) {
-          Serial.println("ESTOU ASQUI");
-          Serial.println(canMsgRcv.data[6]);
 
           canOff = canMsgRcv;
 
