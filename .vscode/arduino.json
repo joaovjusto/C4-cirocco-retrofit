@@ -1,5 +1,5 @@
 {
     "board": "arduino:avr:uno",
     "port": "COM5",
-    "sketch": "volume_fix_1_1.ino\\volume_fix_1_1.ino.ino"
+    "sketch": "finalWorkingClasses/main/main.ino"
 }
